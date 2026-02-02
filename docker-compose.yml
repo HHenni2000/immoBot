@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  immobot:
+    build: .
+    container_name: immobot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persistente Daten
+      - ./data:/app/data
+      - ./logs:/app/logs
+    # Für headless Browser im Container
+    cap_add:
+      - SYS_ADMIN
+    # Sicherheit
+    security_opt:
+      - no-new-privileges:true
+    # Ressourcen-Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G

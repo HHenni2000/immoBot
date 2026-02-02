@@ -1,0 +1,16 @@
+{greeting},
+
+ich habe Ihre Anzeige für die Wohnung in {address} gesehen und bin sehr interessiert.
+
+{custom_message}
+
+Mit freundlichen Grüßen
+
+---
+Verfügbare Platzhalter:
+- {greeting}       - Anrede (z.B. "Sehr geehrte Damen und Herren")
+- {address}        - Adresse der Wohnung
+- {price}          - Mietpreis
+- {size}           - Wohnfläche in m²
+- {title}          - Titel des Inserats
+- {custom_message} - Ihr individueller Text aus der .env Datei

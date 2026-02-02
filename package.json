@@ -1,0 +1,36 @@
+{
+  "name": "immobot",
+  "version": "1.0.0",
+  "description": "Automatisierter Bot zur Überwachung von ImmobilienScout24 Angeboten",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "tsc -w",
+    "manual": "ts-node src/manual-browser.ts",
+    "handoff": "ts-node src/handoff-mode.ts"
+  },
+  "keywords": [
+    "immobilienscout24",
+    "automation",
+    "puppeteer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "nodemailer": "^6.9.16",
+    "puppeteer": "^24.2.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "sql.js": "^1.11.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^6.4.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
