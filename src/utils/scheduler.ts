@@ -21,20 +21,30 @@ export function calculateNextInterval(): number {
  */
 export function isNightMode(): boolean {
   if (!config.nightModeEnabled) {
+    logger.debug('Night mode is disabled');
     return false;
   }
 
   const now = new Date();
   const currentHour = now.getHours();
 
+  // Log current time for debugging
+  logger.debug(`Current time: ${now.toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })} (Local: ${now.toString()})`);
+  logger.debug(`Current hour: ${currentHour}, Night mode: ${config.nightStartHour}:00 - ${config.nightEndHour}:00`);
+
+  let isNight = false;
+  
   // Handle cases where night spans midnight
   if (config.nightStartHour > config.nightEndHour) {
     // e.g., 23:00 to 07:00
-    return currentHour >= config.nightStartHour || currentHour < config.nightEndHour;
+    isNight = currentHour >= config.nightStartHour || currentHour < config.nightEndHour;
   } else {
     // e.g., 01:00 to 06:00
-    return currentHour >= config.nightStartHour && currentHour < config.nightEndHour;
+    isNight = currentHour >= config.nightStartHour && currentHour < config.nightEndHour;
   }
+
+  logger.debug(`Is night mode: ${isNight}`);
+  return isNight;
 }
 
 /**
@@ -133,11 +143,16 @@ export class Scheduler {
     }
 
     // Check for night mode
-    if (isNightMode()) {
+    const nightMode = isNightMode();
+    logger.debug(`Night mode check result: ${nightMode}`);
+    
+    if (nightMode) {
       const sleepDuration = getMsUntilNightModeEnds();
-      logger.info(`Night mode active. Sleeping until ${config.nightEndHour}:00 (${formatDuration(sleepDuration)})`);
+      const wakeTime = new Date(Date.now() + sleepDuration);
+      logger.info(`🌙 Night mode active. Sleeping until ${config.nightEndHour}:00 (${formatDuration(sleepDuration)} - wake at ${wakeTime.toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })})`);
       
       this.currentTimeout = setTimeout(() => {
+        logger.info('☀️ Night mode ended. Resuming checks...');
         this.scheduleNextCheck(true);
       }, sleepDuration);
       return;
@@ -147,7 +162,8 @@ export class Scheduler {
     const interval = immediate ? 0 : calculateNextInterval();
 
     if (interval > 0) {
-      logger.info(`Next check in ${formatDuration(interval)}`);
+      const nextCheckTime = new Date(Date.now() + interval);
+      logger.info(`Next check in ${formatDuration(interval)} (at ${nextCheckTime.toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })})`);
     }
 
     this.currentTimeout = setTimeout(async () => {
