@@ -415,7 +415,7 @@ async function createPdf(page: Page, listing: Listing): Promise<string | null> {
 // Bewerbung senden
 // ============================================
 
-async function applyToListing(page: Page, listing: Listing): Promise<boolean> {
+async function applyToListing(page: Page, listing: Listing): Promise<{ success: boolean; pdfPath?: string }> {
   try {
     log(`Öffne Inserat: ${listing.title}`);
     
@@ -431,7 +431,7 @@ async function applyToListing(page: Page, listing: Listing): Promise<boolean> {
     }
 
     // PDF erstellen BEVOR wir bewerben
-    await createPdf(page, listing);
+    const pdfPath = await createPdf(page, listing);
 
     // Kontakt-Button finden und klicken
     const contactSelectors = [
@@ -472,7 +472,7 @@ async function applyToListing(page: Page, listing: Listing): Promise<boolean> {
 
     if (!clicked) {
       logWarning(`Kein Kontakt-Button gefunden für ${listing.id}`);
-      return false;
+      return { success: false, pdfPath: pdfPath || undefined };
     }
 
     // CAPTCHA prüfen nach Klick (Skip auf Detailseite)
@@ -512,7 +512,7 @@ Mit freundlichen Grüßen`;
 
     if (!typed) {
       logWarning(`Kein Textfeld gefunden für ${listing.id}`);
-      return false;
+      return { success: false, pdfPath: pdfPath || undefined };
     }
 
     await humanDelay(500, 1000);
@@ -549,7 +549,7 @@ Mit freundlichen Grüßen`;
 
     if (!submitButtonFound) {
       logWarning(`Absende-Button nicht gefunden für ${listing.id}`);
-      return false;
+      return { success: false, pdfPath: pdfPath || undefined };
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -590,7 +590,7 @@ Mit freundlichen Grüßen`;
       }
       
       logSuccess(`[TESTMODUS] Bewerbung WÜRDE funktionieren für: ${listing.title}`);
-      return true; // Als erfolgreich markieren
+      return { success: true, pdfPath: pdfPath || undefined }; // Als erfolgreich markieren
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -631,11 +631,11 @@ Mit freundlichen Grüßen`;
     }
 
     logSuccess(`Bewerbung gesendet für: ${listing.title}`);
-    return true;
+    return { success: true, pdfPath: pdfPath || undefined };
 
   } catch (error) {
     logError(`Fehler bei Bewerbung: ${error}`);
-    return false;
+    return { success: false };
   }
 }
 
@@ -713,16 +713,16 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
       url: listing.url,
     };
     
-    const success = await applyToListing(page, listingForApply);
+    const result = await applyToListing(page, listingForApply);
     
-    if (success) {
+    if (result.success) {
       logSuccess(`Bewerbung erfolgreich: ${listing.title}`);
-      // Status in DB aktualisieren
-      db.updateListingStatus(listing.id, 'applied');
+      // Status in DB aktualisieren mit PDF-Pfad
+      db.updateListingStatus(listing.id, 'applied', result.pdfPath);
     } else {
       logWarning(`Bewerbung fehlgeschlagen: ${listing.title}`);
       // Als Fehler markieren
-      db.updateListingStatus(listing.id, 'error', undefined, 'Bewerbung fehlgeschlagen');
+      db.updateListingStatus(listing.id, 'error', result.pdfPath, 'Bewerbung fehlgeschlagen');
     }
 
     // Zurück zur Suche
