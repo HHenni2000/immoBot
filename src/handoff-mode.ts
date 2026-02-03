@@ -504,6 +504,7 @@ async function applyToListing(page: Page, listing: Listing): Promise<{ success: 
     if (captchaCheck.detected) {
       log(`[DEBUG] CAPTCHA erkannt: ${captchaCheck.reason}`);
       await handleCaptcha(page, captchaCheck.reason);
+      log('Fahre fort mit Bewerbung...');
     }
 
     // PDF erstellen BEVOR wir bewerben
@@ -556,6 +557,7 @@ async function applyToListing(page: Page, listing: Listing): Promise<{ success: 
     if (captchaCheck2.detected) {
       log(`[DEBUG] CAPTCHA erkannt nach Klick: ${captchaCheck2.reason}`);
       await handleCaptcha(page, captchaCheck2.reason);
+      log('Fahre fort mit Nachricht eingeben...');
     }
 
     // Nachricht eingeben
@@ -737,6 +739,7 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
   if (captchaCheck.detected) {
     log(`[DEBUG] CAPTCHA erkannt: ${captchaCheck.reason}`);
     await handleCaptcha(page, captchaCheck.reason);
+    log('Lade Suchseite neu...');
     // Nach CAPTCHA nochmal refresh
     await page.reload({ waitUntil: 'networkidle2' });
     await humanDelay(2000, 4000);
