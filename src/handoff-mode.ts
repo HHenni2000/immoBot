@@ -16,6 +16,7 @@ import * as path from 'path';
 import * as readline from 'readline';
 import * as dotenv from 'dotenv';
 import db from './database/database';
+import { extractListingsFromPage } from './services/search.service';
 
 dotenv.config();
 
@@ -52,7 +53,9 @@ interface Listing {
   address: string;
   price: string;
   size: string;
+  rooms?: string;
   url: string;
+  imageUrl?: string;
 }
 
 // ============================================
@@ -666,24 +669,13 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
     await humanDelay(2000, 4000);
   }
 
-  // Listings extrahieren
-  const listings = await extractListings(page);
+  // Listings extrahieren (mit professioneller Extraktion)
+  const listings = await extractListingsFromPage(page);
   log(`${listings.length} Angebote gefunden`);
 
-  // In Datenbank-Format konvertieren
-  const listingsForDb = listings.map(l => ({
-    id: l.id,
-    title: l.title,
-    address: l.address,
-    price: l.price,
-    size: l.size,
-    rooms: undefined,
-    url: l.url,
-    imageUrl: undefined,
-  }));
-
   // Neue Listings finden (über Datenbank)
-  const newListings = db.insertNewListings(listingsForDb);
+  // listings ist bereits im richtigen Format von extractListingsFromPage
+  const newListings = db.insertNewListings(listings);
   
   // Check loggen
   db.logCheck(listings.length, newListings.length, true);
@@ -704,13 +696,15 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
     console.log('');
     log(`Bewerbe auf: ${listing.title}`);
     
-    const listingForApply = {
+    const listingForApply: Listing = {
       id: listing.id,
       title: listing.title,
       address: listing.address,
       price: listing.price,
       size: listing.size,
+      rooms: listing.rooms,
       url: listing.url,
+      imageUrl: listing.imageUrl,
     };
     
     const result = await applyToListing(page, listingForApply);
@@ -915,20 +909,10 @@ async function main() {
     log('Datenbank ist leer - alle gefundenen Angebote werden als NEU behandelt!');
   } else {
     // Nur wenn DB schon Daten hat: Erste Listings merken
-    const initialListings = await extractListings(page);
-    const initialListingsForDb = initialListings.map(l => ({
-      id: l.id,
-      title: l.title,
-      address: l.address,
-      price: l.price,
-      size: l.size,
-      rooms: undefined,
-      url: l.url,
-      imageUrl: undefined,
-    }));
+    const initialListings = await extractListingsFromPage(page);
     
     // In Datenbank schreiben (werden als "bekannt" markiert)
-    db.insertNewListings(initialListingsForDb);
+    db.insertNewListings(initialListings);
     log(`${initialListings.length} bestehende Angebote gemerkt (werden übersprungen)`);
   }
 
