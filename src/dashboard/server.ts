@@ -141,7 +141,7 @@ app.get('/api/dashboard/status', requireAuth, (req: Request, res: Response) => {
     const allListings = db.getAllListings();
     const newestListing = allListings[0]; // Listings sind nach firstSeen DESC sortiert
     
-    let lastActivity = null;
+    let lastActivity: { timestamp: Date; text: string } | null = null;
     if (newestListing) {
       const activityTimestamp = newestListing.appliedAt || newestListing.firstSeen;
       const isApplied = newestListing.status === 'applied';
