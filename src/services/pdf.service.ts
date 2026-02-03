@@ -179,6 +179,7 @@ export async function createListingScreenshot(
     await page.screenshot({
       path: screenshotPath,
       fullPage: true,
+      timeout: 30000, // 30 seconds timeout for screenshot
     });
 
     logger.info(`Screenshot created: ${screenshotPath}`);

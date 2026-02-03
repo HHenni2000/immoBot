@@ -43,6 +43,7 @@ export async function initBrowser(): Promise<Page> {
   browser = await puppeteerExtra.launch({
     headless: config.headless,
     userDataDir: USER_DATA_DIR,
+    protocolTimeout: 240000, // 4 minutes timeout for protocol operations
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -421,8 +422,19 @@ export async function takeScreenshot(page: Page, name: string): Promise<string> 
   }
   
   const screenshotPath = path.join(screenshotsDir, `${name}_${Date.now()}.png`);
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  logger.debug(`Screenshot saved: ${screenshotPath}`);
+  
+  try {
+    await page.screenshot({ 
+      path: screenshotPath, 
+      fullPage: true,
+      timeout: 30000 // 30 seconds timeout for screenshot
+    });
+    logger.debug(`Screenshot saved: ${screenshotPath}`);
+  } catch (error) {
+    logger.warn(`Screenshot failed: ${error}`);
+    throw error; // Re-throw for caller to handle
+  }
+  
   return screenshotPath;
 }
 

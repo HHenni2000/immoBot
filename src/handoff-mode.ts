@@ -231,8 +231,16 @@ async function handleCaptcha(page: Page): Promise<void> {
 async function extractListings(page: Page): Promise<Listing[]> {
   // Debug: Screenshot für Analyse
   const debugScreenshot = path.join(SCREENSHOTS_DIR, `debug_extraction_${Date.now()}.png`);
-  await page.screenshot({ path: debugScreenshot, fullPage: false });
-  log(`Debug-Screenshot: ${debugScreenshot}`);
+  try {
+    await page.screenshot({ 
+      path: debugScreenshot, 
+      fullPage: false,
+      timeout: 30000 // 30 seconds timeout for screenshot
+    });
+    log(`Debug-Screenshot: ${debugScreenshot}`);
+  } catch (error) {
+    logWarning(`Screenshot fehlgeschlagen (wird übersprungen): ${error}`);
+  }
 
   const results = await page.evaluate(() => {
     const listings: Array<{id: string, title: string, address: string, price: string, size: string, url: string}> = [];
@@ -540,18 +548,36 @@ Mit freundlichen Grüßen`;
       // Screenshot als Beweis erstellen
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
       const screenshotPath = path.join(SCREENSHOTS_DIR, `TESTLAUF_${timestamp}_${listing.id}.png`);
-      await page.screenshot({ path: screenshotPath, fullPage: true });
       
-      console.log('');
-      console.log('  ╔═══════════════════════════════════════════════════════╗');
-      console.log('  ║  🧪 TESTMODUS - NICHT WIRKLICH ABGESENDET             ║');
-      console.log('  ╠═══════════════════════════════════════════════════════╣');
-      console.log(`  ║  Listing: ${listing.id.padEnd(43)}║`);
-      console.log('  ║  Status: Formular ausgefüllt, Absende-Button gefunden ║');
-      console.log('  ║  Beweis: Screenshot erstellt                          ║');
-      console.log(`  ║  → ${screenshotPath.substring(screenshotPath.length - 50).padEnd(51)}║`);
-      console.log('  ╚═══════════════════════════════════════════════════════╝');
-      console.log('');
+      try {
+        await page.screenshot({ 
+          path: screenshotPath, 
+          fullPage: true,
+          timeout: 30000 // 30 seconds timeout for screenshot
+        });
+        
+        console.log('');
+        console.log('  ╔═══════════════════════════════════════════════════════╗');
+        console.log('  ║  🧪 TESTMODUS - NICHT WIRKLICH ABGESENDET             ║');
+        console.log('  ╠═══════════════════════════════════════════════════════╣');
+        console.log(`  ║  Listing: ${listing.id.padEnd(43)}║`);
+        console.log('  ║  Status: Formular ausgefüllt, Absende-Button gefunden ║');
+        console.log('  ║  Beweis: Screenshot erstellt                          ║');
+        console.log(`  ║  → ${screenshotPath.substring(screenshotPath.length - 50).padEnd(51)}║`);
+        console.log('  ╚═══════════════════════════════════════════════════════╝');
+        console.log('');
+      } catch (error) {
+        logWarning(`Screenshot fehlgeschlagen: ${error}`);
+        console.log('');
+        console.log('  ╔═══════════════════════════════════════════════════════╗');
+        console.log('  ║  🧪 TESTMODUS - NICHT WIRKLICH ABGESENDET             ║');
+        console.log('  ╠═══════════════════════════════════════════════════════╣');
+        console.log(`  ║  Listing: ${listing.id.padEnd(43)}║`);
+        console.log('  ║  Status: Formular ausgefüllt, Absende-Button gefunden ║');
+        console.log('  ║  Beweis: Screenshot fehlgeschlagen                    ║');
+        console.log('  ╚═══════════════════════════════════════════════════════╝');
+        console.log('');
+      }
       
       logSuccess(`[TESTMODUS] Bewerbung WÜRDE funktionieren für: ${listing.title}`);
       return true; // Als erfolgreich markieren
@@ -718,6 +744,7 @@ async function main() {
     headless: false,
     userDataDir: USER_DATA_DIR,
     defaultViewport: null,
+    protocolTimeout: 240000, // 4 minutes timeout for protocol operations
     args: [
       '--start-maximized',
       '--no-sandbox',
