@@ -10,12 +10,17 @@
  * Bei CAPTCHA: Bot pausiert, Sie lösen es, drücken Enter, Bot macht weiter.
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { Browser, Page } from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as dotenv from 'dotenv';
 import db from './database/database';
+
+// Stealth-Plugin aktivieren (macht Bot fast unsichtbar!)
+puppeteer.use(StealthPlugin());
 
 dotenv.config();
 
