@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as dotenv from 'dotenv';
+import db from './database/database';
 
 dotenv.config();
 
@@ -39,8 +40,8 @@ const SCREENSHOTS_DIR = path.join(DATA_DIR, 'screenshots');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Bekannte Listing-IDs (im Speicher für diese Session)
-const knownListingIds = new Set<string>();
+// Bekannte Listing-IDs (aus Datenbank laden)
+let knownListingIds = new Set<string>();
 
 // Readline Interface
 let rl: readline.Interface;
@@ -654,11 +655,23 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
   const listings = await extractListings(page);
   log(`${listings.length} Angebote gefunden`);
 
-  // Neue Listings finden
-  const newListings = listings.filter(l => !knownListingIds.has(l.id));
+  // In Datenbank-Format konvertieren
+  const listingsForDb = listings.map(l => ({
+    id: l.id,
+    title: l.title,
+    address: l.address,
+    price: l.price,
+    size: l.size,
+    rooms: undefined,
+    url: l.url,
+    imageUrl: undefined,
+  }));
+
+  // Neue Listings finden (über Datenbank)
+  const newListings = db.insertNewListings(listingsForDb);
   
-  // Alle IDs merken
-  listings.forEach(l => knownListingIds.add(l.id));
+  // Check loggen
+  db.logCheck(listings.length, newListings.length, true);
 
   if (newListings.length === 0) {
     log('Keine neuen Angebote');
@@ -676,12 +689,25 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
     console.log('');
     log(`Bewerbe auf: ${listing.title}`);
     
-    const success = await applyToListing(page, listing);
+    const listingForApply = {
+      id: listing.id,
+      title: listing.title,
+      address: listing.address,
+      price: listing.price,
+      size: listing.size,
+      url: listing.url,
+    };
+    
+    const success = await applyToListing(page, listingForApply);
     
     if (success) {
       logSuccess(`Bewerbung erfolgreich: ${listing.title}`);
+      // Status in DB aktualisieren
+      db.updateListingStatus(listing.id, 'applied');
     } else {
       logWarning(`Bewerbung fehlgeschlagen: ${listing.title}`);
+      // Als Fehler markieren
+      db.updateListingStatus(listing.id, 'error', undefined, 'Bewerbung fehlgeschlagen');
     }
 
     // Zurück zur Suche
@@ -858,13 +884,29 @@ async function main() {
   
   await waitForEnter('Bereit? ENTER drücken um den Bot zu starten...');
 
+  // Datenbank initialisieren
+  await db.initializeDatabase();
+  log('Datenbank initialisiert');
+
   // Aktuelle URL speichern (das ist die Suche)
   const searchUrl = page.url();
   log(`Suche-URL gespeichert: ${searchUrl}`);
 
   // Erste Listings merken (damit wir nicht auf bereits vorhandene bewerben)
   const initialListings = await extractListings(page);
-  initialListings.forEach(l => knownListingIds.add(l.id));
+  const initialListingsForDb = initialListings.map(l => ({
+    id: l.id,
+    title: l.title,
+    address: l.address,
+    price: l.price,
+    size: l.size,
+    rooms: undefined,
+    url: l.url,
+    imageUrl: undefined,
+  }));
+  
+  // In Datenbank schreiben (werden als "bekannt" markiert)
+  db.insertNewListings(initialListingsForDb);
   log(`${initialListings.length} bestehende Angebote gemerkt (werden übersprungen)`);
 
   console.log('');
