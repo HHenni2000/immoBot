@@ -1,0 +1,87 @@
+.status-hero {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #48bb78;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-hero.status-night {
+  border-left-color: #805ad5;
+}
+
+.status-hero.status-error {
+  border-left-color: #f56565;
+}
+
+.status-hero.status-paused {
+  border-left-color: #ed8936;
+}
+
+.status-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.status-text {
+  flex: 1;
+}
+
+.status-text h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1a202c;
+}
+
+.last-activity {
+  margin: 0.5rem 0 0;
+  color: #718096;
+  font-size: 0.95rem;
+}
+
+.status-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.status-info small {
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .status-hero {
+    padding: 1.25rem;
+  }
+
+  .status-icon {
+    font-size: 2rem;
+  }
+
+  .status-text h2 {
+    font-size: 1.25rem;
+  }
+
+  .last-activity {
+    font-size: 0.85rem;
+  }
+}

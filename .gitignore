@@ -1,31 +1,31 @@
 # Dependencies
 node_modules/
+dashboard/node_modules/
 
 # Build output
 dist/
+dashboard/dist/
 
-# Environment variables
+# Environment
 .env
+.env.local
+.env.production
 
-# Data files
-data/listings.db
-data/pdfs/
-
-# Logs
+# Data & Logs
+data/
 logs/
-
-# IDE
-.vscode/
-.idea/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Session data
-cookies.json
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-data/browser-profile/
-data/screenshots/
-data/pdfs/
-logs/
+# Temporary files
+*.log
+*.tmp
