@@ -17,6 +17,21 @@ const PORT = parseInt(process.env.DASHBOARD_PORT || '3001', 10);
 const SESSION_SECRET = process.env.DASHBOARD_SESSION_SECRET || 'change-this-secret-in-production';
 const DASHBOARD_PASSWORD_HASH = process.env.DASHBOARD_PASSWORD_HASH || '';
 
+// ============================================================
+// CAPTCHA State Management (in-memory)
+// ============================================================
+interface CaptchaState {
+  active: boolean;
+  imagePath?: string;
+  timestamp?: Date;
+  solution?: string;
+  resolved?: boolean;
+}
+
+let captchaState: CaptchaState = {
+  active: false,
+};
+
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173',
@@ -284,6 +299,123 @@ app.get('/api/files/:filename', requireAuth, (req: Request, res: Response) => {
   } catch (error) {
     logger.error('File serve error:', error);
     res.status(500).json({ error: 'Failed to serve file' });
+  }
+});
+
+// ============================================================
+// CAPTCHA API ROUTES
+// ============================================================
+
+// Get current CAPTCHA state
+app.get('/api/dashboard/captcha/current', requireAuth, (req: Request, res: Response) => {
+  try {
+    if (!captchaState.active) {
+      return res.json({ active: false });
+    }
+
+    // Return CAPTCHA info (without full file path for security)
+    res.json({
+      active: true,
+      timestamp: captchaState.timestamp,
+      imageUrl: captchaState.imagePath ? `/api/captcha/image` : null,
+      resolved: captchaState.resolved || false,
+    });
+  } catch (error) {
+    logger.error('CAPTCHA current error:', error);
+    res.status(500).json({ error: 'Failed to fetch CAPTCHA state' });
+  }
+});
+
+// Get CAPTCHA image
+app.get('/api/captcha/image', requireAuth, (req: Request, res: Response) => {
+  try {
+    if (!captchaState.active || !captchaState.imagePath) {
+      return res.status(404).json({ error: 'No active CAPTCHA' });
+    }
+
+    const imagePath = captchaState.imagePath;
+    if (!fs.existsSync(imagePath)) {
+      return res.status(404).json({ error: 'CAPTCHA image not found' });
+    }
+
+    res.sendFile(imagePath);
+  } catch (error) {
+    logger.error('CAPTCHA image error:', error);
+    res.status(500).json({ error: 'Failed to serve CAPTCHA image' });
+  }
+});
+
+// Submit CAPTCHA solution
+app.post('/api/dashboard/captcha/solve', requireAuth, (req: Request, res: Response) => {
+  try {
+    if (!captchaState.active) {
+      return res.status(400).json({ error: 'No active CAPTCHA' });
+    }
+
+    const { solution } = req.body;
+    if (!solution || typeof solution !== 'string') {
+      return res.status(400).json({ error: 'Invalid solution format' });
+    }
+
+    // Store solution
+    captchaState.solution = solution;
+    captchaState.resolved = true;
+
+    logger.info(`CAPTCHA solution received: ${solution}`);
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('CAPTCHA solve error:', error);
+    res.status(500).json({ error: 'Failed to submit solution' });
+  }
+});
+
+// Set CAPTCHA state (for bot to call)
+app.post('/api/captcha/set', (req: Request, res: Response) => {
+  try {
+    const { active, imagePath } = req.body;
+
+    if (active) {
+      captchaState = {
+        active: true,
+        imagePath,
+        timestamp: new Date(),
+        solution: undefined,
+        resolved: false,
+      };
+      logger.info('CAPTCHA state set: active');
+    } else {
+      captchaState = {
+        active: false,
+      };
+      logger.info('CAPTCHA state set: inactive');
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('CAPTCHA set error:', error);
+    res.status(500).json({ error: 'Failed to set CAPTCHA state' });
+  }
+});
+
+// Get CAPTCHA solution (for bot to poll)
+app.get('/api/captcha/solution', (req: Request, res: Response) => {
+  try {
+    if (!captchaState.resolved || !captchaState.solution) {
+      return res.json({ resolved: false });
+    }
+
+    const solution = captchaState.solution;
+
+    // Clear state after bot retrieves solution
+    captchaState = {
+      active: false,
+    };
+
+    res.json({ resolved: true, solution });
+  } catch (error) {
+    logger.error('CAPTCHA solution error:', error);
+    res.status(500).json({ error: 'Failed to get solution' });
   }
 });
 

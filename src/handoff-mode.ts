@@ -190,6 +190,13 @@ async function detectCaptcha(page: Page, skipOnDetailPage = false): Promise<{ de
 }
 
 async function handleCaptcha(page: Page, reason?: string): Promise<void> {
+  // Try Dashboard-based CAPTCHA solving first
+  const dashboardSolved = await handleCaptchaViaDashboard(page, reason);
+  if (dashboardSolved) {
+    return;
+  }
+
+  // Fallback: Manual solving
   logWarning(`Bot-Erkennung/CAPTCHA erkannt! Bot pausiert. ${reason ? `(Grund: ${reason})` : ''}`);
   
   // Versuche zu erkennen welche Art von Sperre es ist
@@ -1046,6 +1053,73 @@ async function main() {
     log(`Nächster Check in ${formatDuration(nextInterval)}`);
     
     await sleep(nextInterval);
+  }
+}
+
+// ============================================
+// Dashboard CAPTCHA Solver
+// ============================================
+
+async function handleCaptchaViaDashboard(page: Page, reason?: string): Promise<boolean> {
+  try {
+    log('📱 Versuche CAPTCHA über Dashboard zu lösen...');
+    
+    // Screenshot erstellen
+    const screenshotPath = path.join(SCREENSHOTS_DIR, `captcha_${Date.now()}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: false });
+    log(`Screenshot gespeichert: ${screenshotPath}`);
+    
+    // Dashboard benachrichtigen
+    const dashboardUrl = `http://localhost:${process.env.DASHBOARD_PORT || 3001}`;
+    await fetch(`${dashboardUrl}/api/captcha/set`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        active: true,
+        imagePath: screenshotPath,
+      }),
+    });
+    
+    log('✅ Dashboard benachrichtigt - warte auf Lösung...');
+    log('📱 Öffnen Sie das Dashboard auf Ihrem iPhone/PC!');
+    
+    // Polling: Warte auf Lösung (max. 10 Minuten)
+    const maxWaitTime = 10 * 60 * 1000; // 10 minutes
+    const startTime = Date.now();
+    let solution: string | null = null;
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Check every 3 seconds
+      
+      const response = await fetch(`${dashboardUrl}/api/captcha/solution`);
+      const data = await response.json();
+      
+      if (data.resolved && data.solution) {
+        solution = data.solution;
+        break;
+      }
+    }
+    
+    if (!solution) {
+      log('⏱️ Timeout: Keine Lösung vom Dashboard erhalten - Fallback zu manueller Lösung');
+      return false;
+    }
+    
+    log(`✅ Lösung vom Dashboard erhalten: ${solution}`);
+    
+    // Lösung anwenden - einfach als Info speichern
+    // User muss selbst die Felder klicken im Browser
+    log(`Sie haben folgende Lösung eingegeben: ${solution}`);
+    log('Bitte klicken Sie jetzt die entsprechenden Felder im Browser!');
+    
+    await waitForEnter('Felder geklickt? ENTER drücken wenn fertig...');
+    
+    logSuccess('✅ CAPTCHA-Lösung angewendet!');
+    return true;
+    
+  } catch (error) {
+    logError(`Fehler bei Dashboard-CAPTCHA-Lösung: ${error}`);
+    return false;
   }
 }
 

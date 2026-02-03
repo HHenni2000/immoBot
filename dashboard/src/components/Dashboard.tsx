@@ -5,6 +5,7 @@ import { StatusHero } from './StatusHero';
 import { StatCard } from './StatCard';
 import { ActivityFeed } from './ActivityFeed';
 import { Warnings } from './Warnings';
+import { CaptchaAlert } from './CaptchaAlert';
 import './Dashboard.css';
 
 interface DashboardProps {
@@ -72,6 +73,8 @@ export function Dashboard({ onLogout }: DashboardProps) {
       </header>
 
       <main className="dashboard-main">
+        <CaptchaAlert />
+        
         {status && <StatusHero status={status} />}
 
         {stats && (
