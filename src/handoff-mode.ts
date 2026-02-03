@@ -892,22 +892,30 @@ async function main() {
   const searchUrl = page.url();
   log(`Suche-URL gespeichert: ${searchUrl}`);
 
-  // Erste Listings merken (damit wir nicht auf bereits vorhandene bewerben)
-  const initialListings = await extractListings(page);
-  const initialListingsForDb = initialListings.map(l => ({
-    id: l.id,
-    title: l.title,
-    address: l.address,
-    price: l.price,
-    size: l.size,
-    rooms: undefined,
-    url: l.url,
-    imageUrl: undefined,
-  }));
-  
-  // In Datenbank schreiben (werden als "bekannt" markiert)
-  db.insertNewListings(initialListingsForDb);
-  log(`${initialListings.length} bestehende Angebote gemerkt (werden übersprungen)`);
+  // Prüfen ob DB leer ist
+  const existingListings = db.getAllListings();
+  const isFirstRun = existingListings.length === 0;
+
+  if (isFirstRun) {
+    log('Datenbank ist leer - alle gefundenen Angebote werden als NEU behandelt!');
+  } else {
+    // Nur wenn DB schon Daten hat: Erste Listings merken
+    const initialListings = await extractListings(page);
+    const initialListingsForDb = initialListings.map(l => ({
+      id: l.id,
+      title: l.title,
+      address: l.address,
+      price: l.price,
+      size: l.size,
+      rooms: undefined,
+      url: l.url,
+      imageUrl: undefined,
+    }));
+    
+    // In Datenbank schreiben (werden als "bekannt" markiert)
+    db.insertNewListings(initialListingsForDb);
+    log(`${initialListings.length} bestehende Angebote gemerkt (werden übersprungen)`);
+  }
 
   console.log('');
   console.log('═══════════════════════════════════════════════════════════');
