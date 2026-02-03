@@ -16,7 +16,6 @@ import * as path from 'path';
 import * as readline from 'readline';
 import * as dotenv from 'dotenv';
 import db from './database/database';
-import { extractListingsFromPage } from './services/search.service';
 
 dotenv.config();
 
@@ -253,7 +252,7 @@ async function extractListings(page: Page): Promise<Listing[]> {
   }
 
   const results = await page.evaluate(() => {
-    const listings: Array<{id: string, title: string, address: string, price: string, size: string, url: string}> = [];
+    const listings: Array<{id: string, title: string, address: string, price: string, size: string, rooms?: string, url: string, imageUrl?: string}> = [];
     
     // METHODE 1: Alle Links zu Exposés finden
     const exposeLinks = document.querySelectorAll('a[href*="/expose/"]');
@@ -261,7 +260,7 @@ async function extractListings(page: Page): Promise<Listing[]> {
     
     const seenIds = new Set<string>();
     
-    exposeLinks.forEach(link => {
+    exposeLinks.forEach((link, index) => {
       try {
         const href = link.getAttribute('href') || '';
         const match = href.match(/\/expose\/(\d+)/);
@@ -272,36 +271,106 @@ async function extractListings(page: Page): Promise<Listing[]> {
         seenIds.add(id);
         
         // Versuche das Parent-Element zu finden (das Listing-Container)
-        let container = link.closest('article, [class*="result"], [class*="listing"], li, div[data-id]');
-        if (!container) container = link.parentElement?.parentElement || link.parentElement;
-        if (!container) return;
+        let container: Element | null = link.closest('article, [data-testid*="result"], [class*="result"], [class*="listing"], [class*="ResultList"], li, div[data-id]');
+        
+        // Fallback: Mehrere Parent-Ebenen durchsuchen
+        if (!container) {
+          let current: Element | null = link.parentElement;
+          for (let i = 0; i < 5 && current; i++) {
+            const classes = current.className || '';
+            if (classes.includes('result') || classes.includes('listing') || classes.includes('item') || current.tagName === 'ARTICLE' || current.tagName === 'LI') {
+              container = current;
+              break;
+            }
+            current = current.parentElement;
+          }
+        }
+        
+        if (!container) {
+          container = link.parentElement?.parentElement || link.parentElement || document.body;
+        }
         
         // Titel aus Link-Text oder Container
-        let title = link.textContent?.trim() || '';
-        if (!title || title.length < 5) {
-          const h2 = container.querySelector('h2, h3, [class*="title"]');
-          title = h2?.textContent?.trim() || `Objekt ${id}`;
+        let title = '';
+        if (link.textContent && link.textContent.trim().length > 10) {
+          title = link.textContent.trim();
+        } else {
+          const titleSelectors = ['h2', 'h3', '[class*="title"]', '[class*="Title"]', '[data-testid*="title"]'];
+          for (const sel of titleSelectors) {
+            const el = container.querySelector(sel);
+            if (el?.textContent?.trim()) {
+              title = el.textContent.trim();
+              break;
+            }
+          }
         }
+        if (!title) title = `Objekt ${id}`;
         
-        // Adresse suchen
+        // Adresse suchen - ERWEITERTE Selektoren
         let address = '';
-        const addressEl = container.querySelector('[class*="address"], [class*="location"], [class*="ort"]');
-        if (addressEl) {
-          address = addressEl.textContent?.trim() || '';
+        const addressSelectors = [
+          '[class*="address"]', '[class*="Address"]', 
+          '[class*="location"]', '[class*="Location"]',
+          '[class*="ort"]', '[class*="Ort"]',
+          '[data-testid*="address"]', '[data-testid*="location"]'
+        ];
+        for (const sel of addressSelectors) {
+          const el = container.querySelector(sel);
+          if (el?.textContent?.trim()) {
+            address = el.textContent.trim();
+            break;
+          }
         }
         
-        // Preis suchen
+        // Preis suchen - ERWEITERTE Selektoren
         let price = '';
-        const priceEl = container.querySelector('[class*="price"], [class*="preis"], [class*="kosten"]');
-        if (priceEl) {
-          price = priceEl.textContent?.trim() || '';
+        const priceSelectors = [
+          '[class*="price"]', '[class*="Price"]',
+          '[class*="preis"]', '[class*="Preis"]',
+          '[class*="kosten"]', '[class*="Kosten"]',
+          '[data-testid*="price"]'
+        ];
+        for (const sel of priceSelectors) {
+          const el = container.querySelector(sel);
+          const text = el?.textContent?.trim() || '';
+          if (text && (text.includes('€') || text.includes('EUR') || /\d+/.test(text))) {
+            price = text;
+            break;
+          }
         }
         
-        // Größe suchen
+        // Größe suchen - ERWEITERTE Selektoren
         let size = '';
-        const sizeEl = container.querySelector('[class*="area"], [class*="flaeche"], [class*="size"], [class*="qm"]');
-        if (sizeEl) {
-          size = sizeEl.textContent?.trim() || '';
+        const sizeSelectors = [
+          '[class*="area"]', '[class*="Area"]',
+          '[class*="flaeche"]', '[class*="Flaeche"]', '[class*="Fläche"]',
+          '[class*="size"]', '[class*="Size"]',
+          '[class*="qm"]', '[class*="livingspace"]', '[class*="LivingSpace"]',
+          '[data-testid*="area"]', '[data-testid*="size"]'
+        ];
+        for (const sel of sizeSelectors) {
+          const el = container.querySelector(sel);
+          const text = el?.textContent?.trim() || '';
+          if (text && (text.includes('m²') || text.includes('qm') || /\d+/.test(text))) {
+            size = text;
+            break;
+          }
+        }
+        
+        // Zimmer suchen
+        let rooms = '';
+        const roomSelectors = [
+          '[class*="room"]', '[class*="Room"]',
+          '[class*="zimmer"]', '[class*="Zimmer"]',
+          '[data-testid*="room"]'
+        ];
+        for (const sel of roomSelectors) {
+          const el = container.querySelector(sel);
+          const text = el?.textContent?.trim() || '';
+          if (text && /\d+/.test(text)) {
+            rooms = text;
+            break;
+          }
         }
         
         // URL
@@ -310,11 +379,15 @@ async function extractListings(page: Page): Promise<Listing[]> {
           url = 'https://www.immobilienscout24.de' + url;
         }
         
-        listings.push({ id, title, address, price, size, url });
+        console.log(`[DEBUG] Listing ${index + 1}: ID=${id}, Title="${title.substring(0, 30)}...", Address="${address}", Price="${price}", Size="${size}"`);
+        
+        listings.push({ id, title, address, price, size, rooms, url, imageUrl: undefined });
       } catch (e) {
         console.error('[DEBUG] Fehler bei Link:', e);
       }
     });
+    
+    console.log(`[DEBUG] Extrahiert: ${listings.length} Listings`);
     
     // METHODE 2: Falls keine Links gefunden, versuche andere Selektoren
     if (listings.length === 0) {
@@ -669,8 +742,8 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
     await humanDelay(2000, 4000);
   }
 
-  // Listings extrahieren (mit professioneller Extraktion)
-  const listings = await extractListingsFromPage(page);
+  // Listings extrahieren
+  const listings = await extractListings(page);
   log(`${listings.length} Angebote gefunden`);
 
   // Neue Listings finden (über Datenbank)
@@ -909,7 +982,7 @@ async function main() {
     log('Datenbank ist leer - alle gefundenen Angebote werden als NEU behandelt!');
   } else {
     // Nur wenn DB schon Daten hat: Erste Listings merken
-    const initialListings = await extractListingsFromPage(page);
+    const initialListings = await extractListings(page);
     
     // In Datenbank schreiben (werden als "bekannt" markiert)
     db.insertNewListings(initialListings);
