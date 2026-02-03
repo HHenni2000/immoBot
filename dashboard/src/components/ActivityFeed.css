@@ -73,14 +73,23 @@
   gap: 0.25rem;
 }
 
-.activity-details strong {
+.activity-title {
   color: #1a202c;
   font-size: 1rem;
+  font-weight: 600;
+}
+
+.activity-address {
+  color: #4a5568;
+  font-size: 0.9rem;
 }
 
 .activity-meta {
   color: #718096;
   font-size: 0.875rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 .activity-error {

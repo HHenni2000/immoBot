@@ -65,11 +65,16 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
                   <span className="activity-time">{formatTimestamp(activity.timestamp)}</span>
                 </div>
                 <div className="activity-details">
-                  <strong>{activity.address}</strong>
-                  <span className="activity-meta">
-                    {activity.size} · {activity.price}
-                    {activity.rooms && ` · ${activity.rooms}`}
-                  </span>
+                  {activity.title && <strong className="activity-title">{activity.title}</strong>}
+                  {activity.address && <div className="activity-address">{activity.address}</div>}
+                  {(activity.size || activity.price || activity.rooms) && (
+                    <div className="activity-meta">
+                      {activity.size && <span>{activity.size}</span>}
+                      {activity.size && activity.price && <span> · </span>}
+                      {activity.price && <span>{activity.price}</span>}
+                      {activity.rooms && <span> · {activity.rooms}</span>}
+                    </div>
+                  )}
                 </div>
                 {activity.errorMessage && (
                   <div className="activity-error">
@@ -78,7 +83,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
                 )}
                 {activity.pdfPath && (
                   <div className="activity-link">
-                    <small>🔗 Screenshot anzeigen</small>
+                    <small>📄 Screenshot/PDF anzeigen</small>
                   </div>
                 )}
               </div>
