@@ -117,8 +117,17 @@ async function waitForEnter(prompt: string = 'Drücken Sie ENTER um fortzufahren
 // CAPTCHA Erkennung
 // ============================================
 
-async function detectCaptcha(page: Page): Promise<boolean> {
+async function detectCaptcha(page: Page, skipOnDetailPage = false): Promise<{ detected: boolean; reason?: string }> {
   try {
+    // Option: Skip CAPTCHA check on detail/expose pages
+    if (skipOnDetailPage) {
+      const currentUrl = page.url();
+      if (currentUrl.includes('/expose/')) {
+        log('[DEBUG] CAPTCHA-Check übersprungen (Detailseite)');
+        return { detected: false };
+      }
+    }
+
     const captchaSelectors = [
       '[data-testid="captcha"]',
       '.captcha',
@@ -135,7 +144,7 @@ async function detectCaptcha(page: Page): Promise<boolean> {
     for (const selector of captchaSelectors) {
       const element = await page.$(selector);
       if (element) {
-        return true;
+        return { detected: true, reason: `DOM-Element gefunden: ${selector}` };
       }
     }
 
@@ -155,7 +164,7 @@ async function detectCaptcha(page: Page): Promise<boolean> {
     
     for (const keyword of botDetectionKeywords) {
       if (content.includes(keyword)) {
-        return true;
+        return { detected: true, reason: `Keyword gefunden: "${keyword}"` };
       }
     }
 
@@ -164,17 +173,17 @@ async function detectCaptcha(page: Page): Promise<boolean> {
     if (title.toLowerCase().includes('sicherheit') || 
         title.toLowerCase().includes('überprüfung') ||
         title.toLowerCase().includes('security')) {
-      return true;
+      return { detected: true, reason: `Seiten-Titel: "${title}"` };
     }
 
-    return false;
+    return { detected: false };
   } catch {
-    return false;
+    return { detected: false };
   }
 }
 
-async function handleCaptcha(page: Page): Promise<void> {
-  logWarning('Bot-Erkennung/CAPTCHA erkannt! Bot pausiert.');
+async function handleCaptcha(page: Page, reason?: string): Promise<void> {
+  logWarning(`Bot-Erkennung/CAPTCHA erkannt! Bot pausiert. ${reason ? `(Grund: ${reason})` : ''}`);
   
   // Versuche zu erkennen welche Art von Sperre es ist
   const pageContent = await page.evaluate(() => document.body.innerText).catch(() => '');
@@ -214,9 +223,10 @@ async function handleCaptcha(page: Page): Promise<void> {
   await humanDelay(2000, 4000);
   
   // Prüfen ob Bot-Erkennung wirklich weg ist
-  if (await detectCaptcha(page)) {
-    logWarning('Sicherheitsprüfung scheint noch aktiv zu sein...');
-    await handleCaptcha(page); // Rekursiv
+  const recheckResult = await detectCaptcha(page);
+  if (recheckResult.detected) {
+    logWarning(`Sicherheitsprüfung scheint noch aktiv zu sein... (${recheckResult.reason})`);
+    await handleCaptcha(page, recheckResult.reason); // Rekursiv
   } else {
     logSuccess('Sicherheitsprüfung überwunden! Bot macht weiter.');
   }
@@ -413,9 +423,11 @@ async function applyToListing(page: Page, listing: Listing): Promise<boolean> {
     await page.goto(listing.url, { waitUntil: 'networkidle2', timeout: 60000 });
     await humanDelay(2000, 4000);
 
-    // CAPTCHA prüfen
-    if (await detectCaptcha(page)) {
-      await handleCaptcha(page);
+    // CAPTCHA prüfen (mit Skip auf Detailseite)
+    const captchaCheck = await detectCaptcha(page, true);
+    if (captchaCheck.detected) {
+      log(`[DEBUG] CAPTCHA erkannt: ${captchaCheck.reason}`);
+      await handleCaptcha(page, captchaCheck.reason);
     }
 
     // PDF erstellen BEVOR wir bewerben
@@ -463,9 +475,11 @@ async function applyToListing(page: Page, listing: Listing): Promise<boolean> {
       return false;
     }
 
-    // CAPTCHA prüfen nach Klick
-    if (await detectCaptcha(page)) {
-      await handleCaptcha(page);
+    // CAPTCHA prüfen nach Klick (Skip auf Detailseite)
+    const captchaCheck2 = await detectCaptcha(page, true);
+    if (captchaCheck2.detected) {
+      log(`[DEBUG] CAPTCHA erkannt nach Klick: ${captchaCheck2.reason}`);
+      await handleCaptcha(page, captchaCheck2.reason);
     }
 
     // Nachricht eingeben
@@ -609,9 +623,11 @@ Mit freundlichen Grüßen`;
     
     await humanDelay(2000, 4000);
 
-    // CAPTCHA prüfen nach Absenden
-    if (await detectCaptcha(page)) {
-      await handleCaptcha(page);
+    // CAPTCHA prüfen nach Absenden (Skip auf Detailseite)
+    const captchaCheck3 = await detectCaptcha(page, true);
+    if (captchaCheck3.detected) {
+      log(`[DEBUG] CAPTCHA erkannt nach Absenden: ${captchaCheck3.reason}`);
+      await handleCaptcha(page, captchaCheck3.reason);
     }
 
     logSuccess(`Bewerbung gesendet für: ${listing.title}`);
@@ -640,9 +656,11 @@ async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
   
   await humanDelay(2000, 4000);
 
-  // CAPTCHA prüfen
-  if (await detectCaptcha(page)) {
-    await handleCaptcha(page);
+  // CAPTCHA prüfen (auf Suchseite)
+  const captchaCheck = await detectCaptcha(page, false);
+  if (captchaCheck.detected) {
+    log(`[DEBUG] CAPTCHA erkannt: ${captchaCheck.reason}`);
+    await handleCaptcha(page, captchaCheck.reason);
     // Nach CAPTCHA nochmal refresh
     await page.reload({ waitUntil: 'networkidle2' });
     await humanDelay(2000, 4000);
@@ -950,9 +968,11 @@ async function main() {
     } catch (error) {
       logError(`Fehler: ${error}`);
       
-      // CAPTCHA prüfen
-      if (await detectCaptcha(page)) {
-        await handleCaptcha(page);
+      // CAPTCHA prüfen (auf Suchseite)
+      const captchaCheck = await detectCaptcha(page, false);
+      if (captchaCheck.detected) {
+        log(`[DEBUG] CAPTCHA erkannt: ${captchaCheck.reason}`);
+        await handleCaptcha(page, captchaCheck.reason);
       }
     }
 
