@@ -98,6 +98,47 @@ async function humanDelay(minMs: number = 500, maxMs: number = 2000): Promise<vo
   await sleep(randomDelay(minMs, maxMs));
 }
 
+// Simuliert menschliches Verhalten (Mouse-Movement, Scrolling)
+async function simulateHumanBehavior(page: Page): Promise<void> {
+  try {
+    const viewport = page.viewport();
+    if (!viewport) return;
+
+    // Zufällige Mouse-Bewegungen (2-4 mal)
+    const mouseMovements = randomDelay(2, 4);
+    for (let i = 0; i < mouseMovements; i++) {
+      const x = randomDelay(100, viewport.width - 100);
+      const y = randomDelay(100, viewport.height - 100);
+      const steps = randomDelay(15, 35);
+      await page.mouse.move(x, y, { steps });
+      await humanDelay(300, 800);
+    }
+
+    // Zufälliges Scrolling (1-3 mal)
+    const scrolls = randomDelay(1, 3);
+    for (let i = 0; i < scrolls; i++) {
+      const scrollAmount = randomDelay(100, 400);
+      const direction = Math.random() > 0.3 ? scrollAmount : -scrollAmount; // Meist runter, manchmal hoch
+      
+      await page.evaluate((amount) => {
+        window.scrollBy({ top: amount, behavior: 'smooth' });
+      }, direction);
+      
+      await humanDelay(500, 1500);
+    }
+
+    // Manchmal zurück nach oben scrollen
+    if (Math.random() > 0.7) {
+      await page.evaluate(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      await humanDelay(300, 700);
+    }
+  } catch (error) {
+    // Fehler ignorieren, nicht kritisch
+  }
+}
+
 function calculateNextInterval(): number {
   const baseMs = BASE_INTERVAL_MINUTES * 60 * 1000;
   const offsetPercent = RANDOM_OFFSET_PERCENT / 100;
@@ -734,17 +775,37 @@ Mit freundlichen Grüßen`;
 // ============================================
 
 async function runCheckCycle(page: Page, searchUrl: string): Promise<void> {
+  // VOR dem Check: Menschliches Verhalten simulieren
+  log('Simuliere menschliches Verhalten...');
+  await simulateHumanBehavior(page);
+  await humanDelay(1000, 3000);
+  
   log('Aktualisiere Seite...');
   
   // Zur Suchseite navigieren (oder refresh wenn schon dort)
   const currentUrl = page.url();
-  if (currentUrl.includes('immobilienscout24.de/Suche') || currentUrl.includes('/suche/')) {
+  
+  // 30% Chance: Zur Startseite gehen und dann zurück (natürlicher!)
+  const shouldVisitHomepage = Math.random() > 0.7;
+  
+  if (shouldVisitHomepage && currentUrl.includes('immobilienscout24.de')) {
+    log('Besuche Startseite...');
+    await page.goto('https://www.immobilienscout24.de', { waitUntil: 'networkidle2' });
+    await humanDelay(2000, 4000);
+    await simulateHumanBehavior(page);
+    await humanDelay(1000, 2000);
+    log('Zurück zur Suche...');
+    await page.goto(searchUrl, { waitUntil: 'networkidle2' });
+  } else if (currentUrl.includes('immobilienscout24.de/Suche') || currentUrl.includes('/suche/')) {
     await page.reload({ waitUntil: 'networkidle2' });
   } else {
     await page.goto(searchUrl, { waitUntil: 'networkidle2' });
   }
   
   await humanDelay(2000, 4000);
+  
+  // NACH dem Reload: Auch etwas Aktivität zeigen
+  await simulateHumanBehavior(page);
 
   // CAPTCHA prüfen (auf Suchseite)
   const captchaCheck = await detectCaptcha(page, false);
