@@ -137,19 +137,47 @@ app.get('/api/dashboard/status', requireAuth, (req: Request, res: Response) => {
       statusText = 'Fehler beim letzten Check';
     }
 
-    const lastActivity = lastCheck 
-      ? {
-          timestamp: lastCheck.checkedAt,
-          text: lastCheck.newListings > 0 
-            ? `${lastCheck.newListings} neue(s) Angebot(e) gefunden`
-            : 'Check abgeschlossen - keine neuen Angebote',
-        }
-      : null;
+    // Letzte Aktivität: Neuestes Listing oder letzter Check
+    const allListings = db.getAllListings();
+    const newestListing = allListings[0]; // Listings sind nach firstSeen DESC sortiert
+    
+    let lastActivity = null;
+    if (newestListing) {
+      const activityTimestamp = newestListing.appliedAt || newestListing.firstSeen;
+      const isApplied = newestListing.status === 'applied';
+      const hasError = newestListing.status === 'error';
+      
+      lastActivity = {
+        timestamp: activityTimestamp,
+        text: hasError 
+          ? `Fehler bei Bewerbung`
+          : isApplied 
+            ? `Bewerbung versendet`
+            : `${allListings.filter(l => l.firstSeen.getTime() === newestListing.firstSeen.getTime()).length} neue(s) Angebot(e) gefunden`,
+      };
+    } else if (lastCheck) {
+      lastActivity = {
+        timestamp: lastCheck.checkedAt,
+        text: 'Check abgeschlossen - keine neuen Angebote',
+      };
+    }
+
+    // Nächster Check berechnen
+    let nextCheckIn: number | null = null;
+    if (lastCheck && !isNight) {
+      const lastCheckTime = new Date(lastCheck.checkedAt).getTime();
+      const intervalMs = config.baseIntervalMinutes * 60 * 1000;
+      const nextCheckTime = lastCheckTime + intervalMs;
+      const now = Date.now();
+      const minutesUntilNext = Math.max(0, Math.round((nextCheckTime - now) / 60000));
+      nextCheckIn = minutesUntilNext;
+    }
 
     res.json({
       status,
       statusText,
       lastActivity,
+      nextCheckIn, // Zeit in Minuten bis zum nächsten Check
       nightMode: {
         enabled: config.nightModeEnabled,
         startHour: config.nightStartHour,

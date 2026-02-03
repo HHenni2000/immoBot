@@ -39,18 +39,13 @@ export function StatusHero({ status }: StatusHeroProps) {
               {status.lastActivity.text}
             </p>
           )}
+          {status.nextCheckIn !== null && status.nextCheckIn !== undefined && (
+            <p className="next-check">
+              Nächster Check in {status.nextCheckIn} Minute{status.nextCheckIn === 1 ? '' : 'n'}
+            </p>
+          )}
         </div>
       </div>
-      
-      {status.nightMode.enabled && (
-        <div className="status-info">
-          <small>
-            🌙 Nachtmodus: {status.nightMode.startHour}:00 - {status.nightMode.endHour}:00 Uhr
-            {' · '}
-            ⏱️ Check-Intervall: ~{status.checkInterval} Min
-          </small>
-        </div>
-      )}
     </div>
   );
 }

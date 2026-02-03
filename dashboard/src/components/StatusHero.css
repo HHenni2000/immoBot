@@ -57,6 +57,13 @@
   font-size: 0.95rem;
 }
 
+.next-check {
+  margin: 0.25rem 0 0;
+  color: #4299e1;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 .status-info {
   margin-top: 1rem;
   padding-top: 1rem;

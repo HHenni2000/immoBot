@@ -11,6 +11,7 @@ export interface Status {
     timestamp: string;
     text: string;
   } | null;
+  nextCheckIn?: number | null; // Minuten bis zum nächsten Check
   nightMode: {
     enabled: boolean;
     startHour: number;
