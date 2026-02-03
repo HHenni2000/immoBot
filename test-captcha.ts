@@ -4,7 +4,6 @@
  * Erstellt ein Test-CAPTCHA im Dashboard, damit Sie das System testen können
  */
 
-import fetch from 'node-fetch';
 import * as fs from 'fs';
 import * as path from 'path';
 import dotenv from 'dotenv';
