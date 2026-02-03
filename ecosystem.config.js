@@ -1,22 +1,11 @@
 // PM2 Ecosystem File für VPS
-// Startet Bot und Dashboard zusammen
+// NUR Dashboard mit PM2 - Bot wird manuell im VNC gestartet!
 
 module.exports = {
   apps: [
-    {
-      name: 'immobot',
-      script: './dist/handoff-mode.js',  // Handoff-Modus verwenden
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      env: {
-        NODE_ENV: 'production',
-      },
-      error_file: './logs/pm2-bot-error.log',
-      out_file: './logs/pm2-bot-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    },
+    // ❌ Bot NICHT mit PM2 starten - braucht VNC und manuelle Interaktion!
+    // ✅ Starten Sie den Bot manuell im VNC mit: npm run handoff
+    
     {
       name: 'dashboard',
       script: './dist/dashboard/server.js',
