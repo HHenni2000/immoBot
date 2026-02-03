@@ -5,7 +5,7 @@ module.exports = {
   apps: [
     {
       name: 'immobot',
-      script: './dist/index.js',
+      script: './dist/handoff-mode.js',  // Handoff-Modus verwenden
       instances: 1,
       autorestart: true,
       watch: false,
