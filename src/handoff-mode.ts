@@ -140,11 +140,9 @@ async function detectCaptcha(page: Page): Promise<boolean> {
     }
 
     // Check page content for bot detection / security check pages
+    // Only check for very specific bot detection phrases to avoid false positives
     const content = await page.evaluate(() => document.body.innerText.toLowerCase());
     const botDetectionKeywords = [
-      'captcha',
-      'robot',
-      'roboter',
       'sicherheitsüberprüfung',
       'sind sie ein mensch',
       'gleich geht\'s weiter',
@@ -152,7 +150,6 @@ async function detectCaptcha(page: Page): Promise<boolean> {
       'kein roboter',
       'schädliche software',
       'anfrage blockiert',
-      'anfrage-id anzeigen',
       'betrügerischen aktivitäten',
     ];
     
