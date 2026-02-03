@@ -234,8 +234,7 @@ async function extractListings(page: Page): Promise<Listing[]> {
   try {
     await page.screenshot({ 
       path: debugScreenshot, 
-      fullPage: false,
-      timeout: 30000 // 30 seconds timeout for screenshot
+      fullPage: false
     });
     log(`Debug-Screenshot: ${debugScreenshot}`);
   } catch (error) {
@@ -552,8 +551,7 @@ Mit freundlichen Grüßen`;
       try {
         await page.screenshot({ 
           path: screenshotPath, 
-          fullPage: true,
-          timeout: 30000 // 30 seconds timeout for screenshot
+          fullPage: true
         });
         
         console.log('');

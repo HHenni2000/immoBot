@@ -426,8 +426,7 @@ export async function takeScreenshot(page: Page, name: string): Promise<string> 
   try {
     await page.screenshot({ 
       path: screenshotPath, 
-      fullPage: true,
-      timeout: 30000 // 30 seconds timeout for screenshot
+      fullPage: true
     });
     logger.debug(`Screenshot saved: ${screenshotPath}`);
   } catch (error) {
