@@ -5,15 +5,11 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc && cd dashboard && npm run build",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "watch": "tsc -w",
-    "manual": "ts-node src/manual-browser.ts",
+    "start": "npm run handoff",
     "handoff": "ts-node src/handoff-mode.ts",
     "dashboard": "ts-node src/dashboard/server.ts",
     "dashboard:dev": "cd dashboard && npm run dev",
-    "start:all": "concurrently -n \"BOT,DASHBOARD,FRONTEND\" -c \"cyan,magenta,green\" \"npm run handoff\" \"npm run dashboard\" \"cd dashboard && npm run dev\"",
-    "start:all:prod": "concurrently -n \"BOT,DASHBOARD\" -c \"cyan,magenta\" \"npm start\" \"npm run dashboard\""
+    "start:all": "concurrently -n \"BOT,DASHBOARD,FRONTEND\" -c \"cyan,magenta,green\" \"npm run handoff\" \"npm run dashboard\" \"cd dashboard && npm run dev\""
   },
   "keywords": [
     "immobilienscout24",
