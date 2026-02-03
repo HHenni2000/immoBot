@@ -102,7 +102,27 @@ async function performCheck(): Promise<void> {
       return;
     }
     
-    // Send error notification for other errors
+    // Check if it's a browser launch error (often temporary/harmless)
+    if (errorMessage.includes('Failed to launch') || 
+        errorMessage.includes('Opening in existing browser session') ||
+        errorMessage.includes('ERR_CONNECTION_REFUSED')) {
+      logger.warn('Browser launch issue detected - will retry on next cycle');
+      
+      // Try to restart browser
+      if (page) {
+        try {
+          await browserService.closeBrowser();
+          page = null;
+        } catch (closeError) {
+          logger.error('Error closing browser:', closeError);
+        }
+      }
+      
+      // Don't send email for browser launch errors - they're usually temporary
+      return;
+    }
+    
+    // Send error notification only for real/critical errors
     await emailService.sendErrorNotification(
       'Fehler beim Check-Zyklus',
       errorMessage
